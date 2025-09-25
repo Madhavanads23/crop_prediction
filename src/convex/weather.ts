@@ -5,7 +5,7 @@ import { v } from "convex/values";
 // @ts-ignore
 import ARIMA from "arima";
 import { linearRegression, linearRegressionLine } from "simple-statistics";
- // Removed api import to avoid circular type inference
+// Real-time weather data integration
 
 // Seeded random number generator for deterministic results
 function seededRandom(seed: string): () => number {

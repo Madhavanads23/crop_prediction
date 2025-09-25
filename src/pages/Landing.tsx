@@ -54,10 +54,10 @@ export default function Landing() {
             >
               {!isLoading && (
                 <Button
-                  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                  onClick={() => navigate("/dashboard")}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
-                  {isAuthenticated ? "Dashboard" : "Get Started"}
+                  Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )}
@@ -95,13 +95,19 @@ export default function Landing() {
                 onClick={() => navigate("/dashboard")}
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg font-medium"
               >
-                Start Analysis
+                Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => navigate("/auth")}
+                onClick={() => {
+                  // Scroll to features section for "Learn More"
+                  const featuresSection = document.getElementById('features-section');
+                  if (featuresSection) {
+                    featuresSection.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg"
               >
                 Learn More
@@ -141,7 +147,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
+      <section id="features-section" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -275,15 +281,7 @@ export default function Landing() {
               <span className="text-lg font-semibold">AgriSmart Advisor</span>
             </div>
             <div className="text-gray-400 text-sm">
-              Powered by{" "}
-              <a
-                href="https://vly.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-400 hover:text-green-300 transition-colors"
-              >
-                vly.ai
-              </a>
+              © 2025 AgriSmart Advisor. All rights reserved.
             </div>
           </div>
         </div>
