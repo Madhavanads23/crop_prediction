@@ -1,0 +1,21 @@
+{
+  "training_samples": 1200,
+  "num_crops": 43,
+  "num_states": 15,
+  "yield_mse": 71481644.44049118,
+  "yield_r2": -0.031312911680544175,
+  "crop_accuracy": 0.05416666666666667,
+  "training_date": "2025-09-26T10:18:33.280630",
+  "algorithm": "Random Forest (Scikit-learn)",
+  "features": [
+    "state_encoded",
+    "district_encoded",
+    "temperature",
+    "humidity",
+    "rainfall",
+    "ph",
+    "nitrogen",
+    "phosphorus",
+    "potassium"
+  ]
+}

@@ -198,7 +198,7 @@ function calculateProfitPotential(cropYield, marketPrice, suitabilityScore) {
   return 'Very Low';
 }
 
-const PORT = 3001;
+const PORT = 3002;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Simple API Server running on port ${PORT}`);
 });
