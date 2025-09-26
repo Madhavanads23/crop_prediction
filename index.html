@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="icon" type="image/png" href="./logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- Primary Meta Tags -->
@@ -34,6 +34,21 @@
   
   <!-- Canonical URL -->
   <link rel="canonical" href="https://madhavanads23.github.io/crop_prediction/" />
+  
+  <!-- GitHub Pages SPA Support -->
+  <script>
+    // Single Page Apps for GitHub Pages
+    (function(l) {
+      if (l.search[1] === '/' ) {
+        var decoded = l.search.slice(1).split('&').map(function(s) { 
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location))
+  </script>
 </head>
 
 <body>
