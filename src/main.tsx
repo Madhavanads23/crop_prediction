@@ -6,12 +6,14 @@ import "./index.css";
 import Landing from "./pages/Landing.tsx";
 import SimpleDashboard from "./pages/SimpleDashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { RefreshHandler } from "./components/RefreshHandler.tsx";
 import "./types/global.d.ts";
 
 // Simple temporary main without Convex authentication
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
+      <RefreshHandler />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<SimpleDashboard />} />
