@@ -15,6 +15,7 @@ import { ExportReport } from "@/components/ExportReport";
 import { motion } from "framer-motion";
 import { Leaf, TrendingUp, Cloud, BarChart3, Zap, Database } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { WeatherData } from "@/services/openmeteo";
 
 interface FormData {
@@ -141,25 +142,10 @@ export default function SimpleDashboard() {
     setIsLoading(true);
     
     try {
-      // Get real-time weather data automatically based on state and district
-      console.log(`Fetching real-time data for ${formData.district}, ${formData.state}`);
+      console.log(`Making prediction for ${formData.district}, ${formData.state}`);
       
-      // Auto-populate weather data from OpenMeteo API
-      const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=28.7041&longitude=77.1025&current=temperature_2m,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia/Kolkata`);
-      let autoWeatherData = null;
-      
-      if (weatherResponse.ok) {
-        const weatherJson = await weatherResponse.json();
-        autoWeatherData = {
-          temperature: weatherJson.current?.temperature_2m || 25,
-          humidity: weatherJson.current?.relative_humidity_2m || 60,
-          rainfall: weatherJson.current?.precipitation || 5
-        };
-        console.log('Auto-fetched weather data:', autoWeatherData);
-      }
-      
-      // Use auto-fetched weather data or form data
-      const weatherData = autoWeatherData || {
+      // Use current form data (which should already have auto-fetched weather)
+      const weatherData = {
         temperature: parseFloat(formData.temperature) || 25,
         humidity: parseFloat(formData.humidity) || 60,
         rainfall: parseFloat(formData.rainfall) || 5
@@ -174,9 +160,9 @@ export default function SimpleDashboard() {
         body: JSON.stringify({
           state: formData.state,
           district: formData.district,
-          temperature: parseFloat(formData.temperature),
-          humidity: parseFloat(formData.humidity),
-          rainfall: parseFloat(formData.rainfall),
+          temperature: weatherData.temperature,
+          humidity: weatherData.humidity,
+          rainfall: weatherData.rainfall,
           ph: parseFloat(formData.ph),
           n_fertilizer: 120,
           p_fertilizer: 80,
@@ -316,8 +302,48 @@ export default function SimpleDashboard() {
       const districts = stateDistrictMapping[value] || [];
       setAvailableDistricts(districts);
       setFormData(prev => ({ ...prev, [field]: value, district: '' }));
+    } else if (field === 'district' && value) {
+      // When district is selected, automatically fetch weather data
+      setFormData(prev => ({ ...prev, [field]: value }));
+      fetchWeatherForLocation(value, formData.state);
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const fetchWeatherForLocation = async (district: string, state: string) => {
+    try {
+      toast.loading("Fetching weather data...");
+      
+      // Auto-populate weather data from OpenMeteo API
+      const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=28.7041&longitude=77.1025&current=temperature_2m,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia/Kolkata`);
+      
+      if (weatherResponse.ok) {
+        const weatherJson = await weatherResponse.json();
+        const autoWeatherData = {
+          temperature: Math.round(weatherJson.current?.temperature_2m || 25),
+          humidity: Math.round(weatherJson.current?.relative_humidity_2m || 60),
+          rainfall: Math.round(weatherJson.current?.precipitation || 5)
+        };
+        
+        // Update form data with auto-fetched weather values
+        setFormData(prev => ({
+          ...prev,
+          temperature: autoWeatherData.temperature.toString(),
+          humidity: autoWeatherData.humidity.toString(),
+          rainfall: autoWeatherData.rainfall.toString()
+        }));
+        
+        toast.dismiss();
+        toast.success(`Weather updated for ${district}: ${autoWeatherData.temperature}°C, ${autoWeatherData.humidity}% humidity, ${autoWeatherData.rainfall}mm rainfall`);
+      } else {
+        toast.dismiss();
+        toast.error("Could not fetch weather data");
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Error fetching weather data");
+      console.error('Weather fetch error:', error);
     }
   };
 
