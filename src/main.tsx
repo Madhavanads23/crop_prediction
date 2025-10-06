@@ -12,7 +12,7 @@ import "./types/global.d.ts";
 // Simple temporary main without Convex authentication
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/crop_prediction">
       <RefreshHandler />
       <Routes>
         <Route path="/" element={<Landing />} />
