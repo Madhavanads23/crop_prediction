@@ -8,6 +8,19 @@ export function useRefreshHandler() {
   const [refreshPageName, setRefreshPageName] = useState('');
 
   useEffect(() => {
+    // Check if this is a fresh website visit (not a page refresh)
+    const isNewVisit = !sessionStorage.getItem('agrismart_sessionActive');
+    
+    // If it's a new visit and user is not on home page, redirect to home
+    if (isNewVisit && location.pathname !== '/') {
+      sessionStorage.setItem('agrismart_sessionActive', 'true');
+      navigate('/', { replace: true });
+      return;
+    }
+    
+    // Mark session as active for subsequent navigation
+    sessionStorage.setItem('agrismart_sessionActive', 'true');
+
     // Store current page info when page changes
     const pageInfo = {
       pathname: location.pathname,
@@ -16,7 +29,7 @@ export function useRefreshHandler() {
     };
     localStorage.setItem('agrismart_currentPage', JSON.stringify(pageInfo));
 
-    // Check if this page load is due to a refresh
+    // Check if this page load is due to a refresh (only for existing sessions)
     const checkIfRefreshed = () => {
       const refreshFlag = sessionStorage.getItem('agrismart_pageRefreshed');
       const lastPage = sessionStorage.getItem('agrismart_lastPage');
@@ -36,24 +49,42 @@ export function useRefreshHandler() {
     };
 
     // Set refresh flag in sessionStorage before page unloads
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (location.pathname !== '/') {
         sessionStorage.setItem('agrismart_pageRefreshed', 'true');
         sessionStorage.setItem('agrismart_lastPage', location.pathname);
       }
     };
 
-    // Add event listener
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Clear session when window is actually closed (not refreshed)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // User is navigating away or closing tab
+        // Use a small delay to distinguish between refresh and close
+        setTimeout(() => {
+          if (document.visibilityState === 'hidden') {
+            // Still hidden after delay - likely closing tab
+            sessionStorage.removeItem('agrismart_sessionActive');
+          }
+        }, 1000);
+      }
+    };
 
-    // Check for refresh on component mount with slight delay
-    setTimeout(checkIfRefreshed, 100);
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Check for refresh on component mount with slight delay (only if not a new visit)
+    if (!isNewVisit) {
+      setTimeout(checkIfRefreshed, 100);
+    }
 
     // Cleanup
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   // Helper function to get user-friendly page names
   const getPageName = (pathname: string): string => {

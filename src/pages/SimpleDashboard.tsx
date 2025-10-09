@@ -315,36 +315,142 @@ export default function SimpleDashboard() {
     try {
       toast.loading("Fetching weather data...");
       
-      // Auto-populate weather data from OpenMeteo API
-      const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=28.7041&longitude=77.1025&current=temperature_2m,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia/Kolkata`);
+      // Get coordinates for the selected state/district
+      const coordinates = getCoordinatesForLocation(state, district);
+      
+      // Improved OpenMeteo API call with actual location coordinates and better precipitation data
+      const weatherResponse = await fetch(
+        `https://api.open-meteo.com/v1/forecast?` +
+        `latitude=${coordinates.lat}&longitude=${coordinates.lon}&` +
+        `current=temperature_2m,relative_humidity_2m,precipitation,rain&` +
+        `hourly=precipitation,rain&` +
+        `daily=precipitation_sum,rain_sum&` +
+        `timezone=Asia/Kolkata&` +
+        `forecast_days=1&` +
+        `past_days=1`
+      );
       
       if (weatherResponse.ok) {
         const weatherJson = await weatherResponse.json();
+        console.log('Weather API Response:', weatherJson); // Debug log
+        console.log('Current weather data:', weatherJson.current); // Debug current data
+        console.log('Daily weather data:', weatherJson.daily); // Debug daily data
+        
+        // Get rainfall from multiple sources for better accuracy
+        const currentRain = weatherJson.current?.rain || weatherJson.current?.precipitation || 0;
+        const dailyRain = weatherJson.daily?.precipitation_sum?.[0] || weatherJson.daily?.rain_sum?.[0] || 0;
+        const yesterdayRain = weatherJson.daily?.precipitation_sum?.[1] || weatherJson.daily?.rain_sum?.[1] || 0;
+        
+        // Get recent hourly precipitation if available
+        const recentHourlyRain = weatherJson.hourly?.precipitation ? 
+          weatherJson.hourly.precipitation.slice(-24).reduce((sum: number, val: number) => sum + (val || 0), 0) : 0;
+        
+        console.log('Current rain:', currentRain, 'Daily rain:', dailyRain, 'Yesterday rain:', yesterdayRain, 'Recent hourly rain:', recentHourlyRain); // Debug rainfall values
+        
+        // Use the best available rainfall data with agricultural context
+        let rainfall = 5; // Default fallback (reasonable for dry conditions)
+        
+        if (currentRain > 0) {
+          rainfall = Math.round(currentRain);
+        } else if (dailyRain > 0) {
+          // For daily precipitation, if it's very small, extrapolate to weekly/monthly context
+          if (dailyRain < 1) {
+            // Very light precipitation - convert to agricultural context (weekly equivalent)
+            rainfall = Math.max(Math.round(dailyRain * 7), 1);
+          } else {
+            rainfall = Math.round(dailyRain);
+          }
+        } else if (recentHourlyRain > 0) {
+          rainfall = Math.max(Math.round(recentHourlyRain), 1);
+        } else if (yesterdayRain > 0) {
+          if (yesterdayRain < 1) {
+            rainfall = Math.max(Math.round(yesterdayRain * 7), 1);
+          } else {
+            rainfall = Math.round(yesterdayRain);
+          }
+        }
+        
+        // Ensure rainfall is reasonable for agriculture (minimum 1mm, maximum 150mm for daily context)
+        rainfall = Math.min(Math.max(rainfall, 1), 150);
+        
         const autoWeatherData = {
           temperature: Math.round(weatherJson.current?.temperature_2m || 25),
           humidity: Math.round(weatherJson.current?.relative_humidity_2m || 60),
-          rainfall: Math.round(weatherJson.current?.precipitation || 5)
+          rainfall: rainfall
         };
         
+        console.log('Processed weather data:', autoWeatherData); // Debug log
+        console.log('Previous form data:', formData); // Debug previous form data
+        
         // Update form data with auto-fetched weather values
-        setFormData(prev => ({
-          ...prev,
-          temperature: autoWeatherData.temperature.toString(),
-          humidity: autoWeatherData.humidity.toString(),
-          rainfall: autoWeatherData.rainfall.toString()
-        }));
+        setFormData(prev => {
+          const updated = {
+            ...prev,
+            temperature: autoWeatherData.temperature.toString(),
+            humidity: autoWeatherData.humidity.toString(),
+            rainfall: autoWeatherData.rainfall.toString()
+          };
+          console.log('Updated form data:', updated); // Debug updated form data
+          return updated;
+        });
         
         toast.dismiss();
-        toast.success(`Weather updated for ${district}: ${autoWeatherData.temperature}°C, ${autoWeatherData.humidity}% humidity, ${autoWeatherData.rainfall}mm rainfall`);
+        toast.success(`Weather updated for ${district}, ${state} (${coordinates.lat.toFixed(2)}, ${coordinates.lon.toFixed(2)}): ${autoWeatherData.temperature}°C, ${autoWeatherData.humidity}% humidity, ${autoWeatherData.rainfall}mm rainfall`);
       } else {
+        console.error('Weather API response not ok:', weatherResponse.status, weatherResponse.statusText);
         toast.dismiss();
-        toast.error("Could not fetch weather data");
+        toast.error(`Weather API error: ${weatherResponse.status} ${weatherResponse.statusText}`);
       }
     } catch (error) {
       toast.dismiss();
       toast.error("Error fetching weather data");
       console.error('Weather fetch error:', error);
     }
+  };
+
+  // Function to get coordinates for Indian states and districts
+  const getCoordinatesForLocation = (state: string, district: string) => {
+    // Major Indian cities/states coordinates
+    const locationCoordinates: { [key: string]: { lat: number; lon: number } } = {
+      // Major states with representative coordinates
+      'Punjab': { lat: 30.7333, lon: 76.7794 }, // Chandigarh
+      'Haryana': { lat: 28.7041, lon: 77.1025 }, // Delhi area
+      'Uttar Pradesh': { lat: 26.8467, lon: 80.9462 }, // Lucknow
+      'Madhya Pradesh': { lat: 23.2599, lon: 77.4126 }, // Bhopal
+      'Maharashtra': { lat: 19.0760, lon: 72.8777 }, // Mumbai
+      'Gujarat': { lat: 23.0225, lon: 72.5714 }, // Ahmedabad
+      'Rajasthan': { lat: 26.9124, lon: 75.7873 }, // Jaipur
+      'West Bengal': { lat: 22.5726, lon: 88.3639 }, // Kolkata
+      'Bihar': { lat: 25.0961, lon: 85.3131 }, // Patna
+      'Odisha': { lat: 20.2961, lon: 85.8245 }, // Bhubaneswar
+      'Andhra Pradesh': { lat: 15.9129, lon: 79.7400 }, // Vijayawada
+      'Tamil Nadu': { lat: 13.0827, lon: 80.2707 }, // Chennai
+      'Karnataka': { lat: 12.9716, lon: 77.5946 }, // Bangalore
+      'Kerala': { lat: 10.1632, lon: 76.6413 }, // Kochi
+      'Telangana': { lat: 17.3850, lon: 78.4867 }, // Hyderabad
+      
+      // District-specific coordinates for better accuracy
+      'Ludhiana': { lat: 30.9010, lon: 75.8573 },
+      'Amritsar': { lat: 31.6340, lon: 74.8723 },
+      'Gurugram': { lat: 28.4595, lon: 77.0266 },
+      'Faridabad': { lat: 28.4089, lon: 77.3178 },
+      'Agra': { lat: 27.1767, lon: 78.0081 },
+      'Kanpur': { lat: 26.4499, lon: 80.3319 },
+      'Lucknow': { lat: 26.8467, lon: 80.9462 },
+      'Indore': { lat: 22.7196, lon: 75.8577 },
+      'Bhopal': { lat: 23.2599, lon: 77.4126 },
+      'Mumbai': { lat: 19.0760, lon: 72.8777 },
+      'Pune': { lat: 18.5204, lon: 73.8567 },
+      'Ahmedabad': { lat: 23.0225, lon: 72.5714 },
+      'Surat': { lat: 21.1702, lon: 72.8311 },
+      'Jaipur': { lat: 26.9124, lon: 75.7873 },
+      'Jodhpur': { lat: 26.2389, lon: 73.0243 },
+      'Kolkata': { lat: 22.5726, lon: 88.3639 },
+      'Howrah': { lat: 22.5958, lon: 88.2636 }
+    };
+    
+    // Try to get coordinates by district first, then by state
+    return locationCoordinates[district] || locationCoordinates[state] || { lat: 28.7041, lon: 77.1025 };
   };
 
   return (
@@ -554,13 +660,26 @@ export default function SimpleDashboard() {
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-center gap-2 text-blue-700 mb-2">
-                    <Cloud className="h-4 w-4" />
-                    <span className="text-sm font-medium">Real-time Weather Integration</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Cloud className="h-4 w-4" />
+                      <span className="text-sm font-medium">Real-time Weather Integration</span>
+                    </div>
+                    {formData.state && formData.district && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => fetchWeatherForLocation(formData.district, formData.state)}
+                        className="text-xs h-6 px-2"
+                      >
+                        🌤️ Refresh Weather
+                      </Button>
+                    )}
                   </div>
                   <p className="text-blue-600 text-xs">
                     Weather data will be automatically fetched from OpenMeteo API based on your selected location. 
-                    You can override the values if needed.
+                    You can override the values if needed. 🌍 Live data updates every selection!
                   </p>
                 </div>
 
@@ -591,13 +710,14 @@ export default function SimpleDashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="rainfall">Rainfall (mm)</Label>
+                    <Label htmlFor="rainfall">Rainfall (mm) - Auto-updated</Label>
                     <Input 
                       id="rainfall"
                       type="number"
                       value={formData.rainfall}
                       onChange={(e) => handleInputChange('rainfall', e.target.value)}
-                      placeholder="500"
+                      placeholder="Auto-fetched from API"
+                      className="bg-green-50 border-green-200"
                     />
                   </div>
                   <div>

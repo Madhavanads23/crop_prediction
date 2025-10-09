@@ -9,6 +9,21 @@ import NotFound from "./pages/NotFound.tsx";
 import { RefreshHandler } from "./components/RefreshHandler.tsx";
 import "./types/global.d.ts";
 
+// Initialize clean session on app start
+const initializeApp = () => {
+  // Clear any stale session data on fresh app load
+  const isNewTabOrWindow = !sessionStorage.getItem('agrismart_sessionActive');
+  
+  if (isNewTabOrWindow) {
+    // Clear any refresh flags from previous sessions
+    sessionStorage.removeItem('agrismart_pageRefreshed');
+    sessionStorage.removeItem('agrismart_lastPage');
+  }
+};
+
+// Initialize app
+initializeApp();
+
 // Simple temporary main without Convex authentication
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
